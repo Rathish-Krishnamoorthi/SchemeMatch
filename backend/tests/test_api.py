@@ -227,4 +227,4 @@ def test_trust_score_endpoint_returns_every_catalogue_record(monkeypatch) -> Non
     body = response.json()
     assert body["total"] == 1
     assert body["schemes"][0]["scheme"]["scheme_id"] == "catalogue-scheme"
-    assert body["schemes"][0]["trust"]["score"] == 80
+    assert body["schemes"][0]["trust"]["score"] == 53

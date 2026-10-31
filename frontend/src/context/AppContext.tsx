@@ -68,6 +68,28 @@ function readStoredDemographicProfile(): UserDemographicProfile | null {
   }
 }
 
+async function getApiErrorMessage(response: Response, fallback: string): Promise<string> {
+  const body = await response.text()
+  if (response.headers.get('content-type')?.includes('application/json')) {
+    try {
+      const data: unknown = JSON.parse(body)
+      if (typeof data === 'object' && data !== null && 'detail' in data) {
+        const detail = data.detail
+        if (typeof detail === 'string') return detail
+        if (Array.isArray(detail)) {
+          const messages = detail
+            .map((item) => typeof item === 'object' && item !== null && 'msg' in item ? item.msg : null)
+            .filter((message): message is string => typeof message === 'string')
+          if (messages.length) return messages.join(' ')
+        }
+      }
+    } catch {
+      return `${fallback} (HTTP ${response.status}).`
+    }
+  }
+  return `${fallback} (HTTP ${response.status}).`
+}
+
 export function AppProvider({ children }: PropsWithChildren) {
   const [recommendations, setRecommendations] = useState(readSessionRecommendations)
   const [disclaimer, setDisclaimer] = useState('')
@@ -213,8 +235,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       body: JSON.stringify({ name, email, password }),
     })
     if (!response.ok) {
-      const data = await response.json() as { detail?: string }
-      throw new Error(data.detail ?? 'Signup failed.')
+      throw new Error(await getApiErrorMessage(response, 'Signup failed.'))
     }
     const { token: newToken, user } = await response.json() as { token: string; user: AuthUser }
     setCurrentUser(user)
@@ -229,8 +250,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       body: JSON.stringify({ email, password }),
     })
     if (!response.ok) {
-      const data = await response.json() as { detail?: string }
-      throw new Error(data.detail ?? 'Login failed.')
+      throw new Error(await getApiErrorMessage(response, 'Login failed.'))
     }
     const { token: newToken, user } = await response.json() as { token: string; user: AuthUser }
     setCurrentUser(user)

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Pagination } from '../components/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import type { TrustScoresResponse } from '../types'
 
 export function TrustScorePage() {
   const [data, setData] = useState<TrustScoresResponse | null>(null)
   const [error, setError] = useState('')
+  const pagination = usePagination(data?.schemes ?? [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -46,11 +49,12 @@ export function TrustScorePage() {
             <strong>{data.total} schemes assessed</strong>
             <p>
               Up to 100 points are awarded for an Indian government domain, HTTPS, source attribution,
-              recent verification, and completeness of the stored scheme record.
+              verification recency, and the recorded depth of scheme details, eligibility criteria,
+              documents, and application steps. These evidence checks do not confirm accuracy.
             </p>
           </div>
           <div className="trust-list">
-            {data.schemes.map(({ scheme, trust }) => (
+            {pagination.items.map(({ scheme, trust }) => (
               <article className="trust-card" key={scheme.scheme_id}>
                 <div className="trust-card-heading">
                   <div>
@@ -80,6 +84,13 @@ export function TrustScorePage() {
               </article>
             ))}
           </div>
+          <Pagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+          />
           <p className="disclaimer"><span>!</span>{data.disclaimer}</p>
         </>
       )}

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Pagination } from '../components/Pagination'
 import { categoryMarks } from '../data/profile'
 import { useAppContext } from '../hooks/useAppContext'
+import { usePagination } from '../hooks/usePagination'
 import type { EligibilityScanResponse, ScanSchemeResult } from '../types'
 
 // ── Scan card ─────────────────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ export function EligibilityScanPage() {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'eligible' | 'unknown' | 'unverified' | 'ineligible'>('eligible')
   const hasFetched = useRef(false)
+  const pagination = usePagination(data?.[activeTab] ?? [])
 
   useEffect(() => {
     if (!token || hasFetched.current) return
@@ -111,6 +114,7 @@ export function EligibilityScanPage() {
 
   async function runScan() {
     if (!token) return
+    pagination.setPage(1)
     setLoading(true)
     setError('')
     try {
@@ -195,7 +199,7 @@ export function EligibilityScanPage() {
               className={`scan-stat-card ${activeTab === key ? 'active' : ''}`}
               style={{ '--stat-color': color, '--stat-bg': bg } as React.CSSProperties}
               type="button"
-              onClick={() => setActiveTab(key)}
+              onClick={() => { setActiveTab(key); pagination.setPage(1) }}
             >
               <div className="scan-stat-num">{val}</div>
               <div className="scan-stat-label">{label}</div>
@@ -204,7 +208,7 @@ export function EligibilityScanPage() {
           <button
             className={`scan-stat-card excluded ${activeTab === 'ineligible' ? 'active' : ''}`}
             type="button"
-            onClick={() => setActiveTab('ineligible')}
+            onClick={() => { setActiveTab('ineligible'); pagination.setPage(1) }}
           >
             <div className="scan-stat-num">{data.totals.ineligible}</div>
             <div className="scan-stat-label">Not eligible</div>
@@ -230,49 +234,37 @@ export function EligibilityScanPage() {
       {/* Results */}
       {data && !loading && (
         <div className="scan-results">
-          {activeTab === 'eligible' && (
-            <>
-              {data.eligible.length === 0
-                ? <div className="no-results"><span className="no-results-icon">✓</span><h3>No schemes matched all your criteria.</h3><p>Try adding more profile details for better results.</p></div>
-                : <div className="scan-list">
-                    {data.eligible.map(item => (
-                      <ScanCard key={item.scheme.scheme_id} item={item} isSaved={savedIds.includes(item.scheme.scheme_id)} onToggle={toggleSaved} />
-                    ))}
-                  </div>
-              }
-            </>
-          )}
-          {activeTab === 'unknown' && (
-            <div className="scan-list">
-              {data.unknown.length === 0
-                ? <div className="no-results"><span className="no-results-icon">⌕</span><h3>No schemes in this group.</h3></div>
-                : data.unknown.map(item => (
-                    <ScanCard key={item.scheme.scheme_id} item={item} isSaved={savedIds.includes(item.scheme.scheme_id)} onToggle={toggleSaved} />
-                  ))
-              }
+          {activeTab === 'unverified' && pagination.totalItems > 0 && (
+            <div className="scan-notice">
+              <span>i</span>
+              <p>These schemes exist in the catalogue but don't yet have eligibility rules defined. They may be relevant — check the official source.</p>
             </div>
           )}
-          {activeTab === 'unverified' && (
+          {pagination.totalItems === 0 ? (
+            <div className="no-results">
+              <span className="no-results-icon">{activeTab === 'unknown' ? '⌕' : '✓'}</span>
+              <h3>
+                {activeTab === 'eligible' && 'No schemes matched all your criteria.'}
+                {activeTab === 'unknown' && 'No schemes in this group.'}
+                {activeTab === 'unverified' && 'No schemes in this group.'}
+                {activeTab === 'ineligible' && 'No schemes were ruled out.'}
+              </h3>
+              {activeTab === 'eligible' && <p>Try adding more profile details for better results.</p>}
+            </div>
+          ) : (
             <div className="scan-list">
-              <div className="scan-notice">
-                <span>i</span>
-                <p>These schemes exist in the catalogue but don't yet have eligibility rules defined. They may be relevant — check the official source.</p>
-              </div>
-              {data.unverified.map(item => (
+              {pagination.items.map(item => (
                 <ScanCard key={item.scheme.scheme_id} item={item} isSaved={savedIds.includes(item.scheme.scheme_id)} onToggle={toggleSaved} />
               ))}
             </div>
           )}
-          {activeTab === 'ineligible' && (
-            <div className="scan-list">
-              {data.ineligible.length === 0
-                ? <div className="no-results"><span className="no-results-icon">✓</span><h3>No schemes were ruled out.</h3></div>
-                : data.ineligible.map(item => (
-                    <ScanCard key={item.scheme.scheme_id} item={item} isSaved={savedIds.includes(item.scheme.scheme_id)} onToggle={toggleSaved} />
-                  ))
-              }
-            </div>
-          )}
+          <Pagination
+            page={pagination.page}
+            pageCount={pagination.pageCount}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+          />
         </div>
       )}
 

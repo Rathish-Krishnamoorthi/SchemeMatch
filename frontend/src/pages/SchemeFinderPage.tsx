@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { Pagination } from '../components/Pagination'
 import { categoryMarks } from '../data/profile'
 import { useAppContext } from '../hooks/useAppContext'
+import { usePagination } from '../hooks/usePagination'
 import type { FinderResponse, FinderResult, QuestionnaireAnswers, ScanSchemeResult } from '../types'
 
 // ── Category-specific questions ───────────────────────────────────────────────
@@ -247,6 +249,8 @@ export function SchemeFinderPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [weights, setWeights] = useState(INITIAL_WEIGHTS)
+  const resultPagination = usePagination(response?.results ?? [])
+  const unknownPagination = usePagination(response?.unknown ?? [])
 
   function updateAdditional(id: string, value: string) {
     setAnswers(a => ({ ...a, additional: { ...a.additional, [id]: value } }))
@@ -270,6 +274,8 @@ export function SchemeFinderPage() {
 
   async function submit() {
     if (!token) return
+    resultPagination.setPage(1)
+    unknownPagination.setPage(1)
     setLoading(true)
     setError('')
     setStep('results')
@@ -300,6 +306,8 @@ export function SchemeFinderPage() {
   }
 
   function restart() {
+    resultPagination.setPage(1)
+    unknownPagination.setPage(1)
     setAnswers(INITIAL_ANSWERS)
     setWeights(INITIAL_WEIGHTS)
     setResponse(null)
@@ -554,24 +562,38 @@ export function SchemeFinderPage() {
                   )}
                   {response.results.length > 0 && (
                   <div className="finder-list">
-                    {response.results.map((item, i) => (
+                    {resultPagination.items.map((item, i) => (
                       <FinderCard
                         key={item.scheme.scheme_id}
                         item={item}
-                        rank={i + 1}
+                        rank={(resultPagination.page - 1) * resultPagination.pageSize + i + 1}
                         isSaved={savedIds.includes(item.scheme.scheme_id)}
                         onToggle={toggleSaved}
                       />
                     ))}
                   </div>
                   )}
+                  <Pagination
+                    page={resultPagination.page}
+                    pageCount={resultPagination.pageCount}
+                    pageSize={resultPagination.pageSize}
+                    totalItems={resultPagination.totalItems}
+                    onPageChange={resultPagination.setPage}
+                  />
                   {response.unknown.length > 0 && (
                     <section className="finder-unknown-section">
                       <h2>Unknown eligibility <span>{response.unknown.length}</span></h2>
                       <p>These schemes are not ranked as eligible: at least one profile detail or authoritative rule is missing.</p>
                       <div className="finder-list">
-                        {response.unknown.map((item) => <UnknownFinderCard key={item.scheme.scheme_id} item={item} />)}
+                        {unknownPagination.items.map((item) => <UnknownFinderCard key={item.scheme.scheme_id} item={item} />)}
                       </div>
+                      <Pagination
+                        page={unknownPagination.page}
+                        pageCount={unknownPagination.pageCount}
+                        pageSize={unknownPagination.pageSize}
+                        totalItems={unknownPagination.totalItems}
+                        onPageChange={unknownPagination.setPage}
+                      />
                     </section>
                   )}
                   <div className="disclaimer"><span>!</span><p>{response.disclaimer}</p></div>

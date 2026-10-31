@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Pagination } from '../components/Pagination'
 import { useAppContext } from '../hooks/useAppContext'
+import { usePagination } from '../hooks/usePagination'
 import type { Scheme } from '../types'
 
 export function SavedSchemesPage() {
@@ -11,6 +13,7 @@ export function SavedSchemesPage() {
     () => schemes.filter((scheme) => savedIds.includes(scheme.scheme_id)),
     [schemes, savedIds],
   )
+  const pagination = usePagination(savedSchemes)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -45,7 +48,7 @@ export function SavedSchemesPage() {
         </div>
       )}
       <div className="scan-list">
-        {savedSchemes.map((scheme) => (
+        {pagination.items.map((scheme) => (
           <article className="scan-card" key={scheme.scheme_id}>
             <div className="scan-card-top">
               <span className="dc-category">{scheme.category}</span>
@@ -67,6 +70,13 @@ export function SavedSchemesPage() {
           </article>
         ))}
       </div>
+      <Pagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        onPageChange={pagination.setPage}
+      />
     </div>
   )
 }

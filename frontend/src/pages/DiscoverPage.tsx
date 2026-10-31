@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Pagination } from '../components/Pagination'
+import { usePagination } from '../hooks/usePagination'
 import { useAppContext } from '../hooks/useAppContext'
 import type { EligibleSchemesResponse } from '../types'
 
@@ -15,6 +17,7 @@ export function DiscoverPage() {
   const data = requestState.key === requestKey ? requestState.data ?? null : null
   const error = requestState.key === requestKey ? requestState.error ?? '' : ''
   const loading = Boolean(token) && requestState.key !== requestKey
+  const pagination = usePagination(data?.schemes ?? [])
 
   useEffect(() => {
     if (!token) return
@@ -112,7 +115,10 @@ export function DiscoverPage() {
             <button
               className="discover-refresh-btn"
               type="button"
-              onClick={() => setRefreshKey((current) => current + 1)}
+              onClick={() => {
+                pagination.setPage(1)
+                setRefreshKey((current) => current + 1)
+              }}
             >
               ↺ Refresh
             </button>
@@ -126,8 +132,9 @@ export function DiscoverPage() {
               <Link className="details-link" to="/eligibility-scan">View eligibility scan →</Link>
             </div>
           ) : (
-            <div className="scan-list discover-eligible-list">
-              {data.schemes.map(({ scheme, eligibility, trust }, index) => {
+            <>
+              <div className="scan-list discover-eligible-list">
+              {pagination.items.map(({ scheme, eligibility, trust }, index) => {
                 const isSaved = savedIds.includes(scheme.scheme_id)
                 return (
                   <article className="scan-card" key={scheme.scheme_id}>
@@ -144,7 +151,7 @@ export function DiscoverPage() {
                         {isSaved ? '♥' : '♡'}
                       </button>
                     </div>
-                    <h2 className="scan-card-name">{index + 1}. {scheme.name}</h2>
+                    <h2 className="scan-card-name">{(pagination.page - 1) * pagination.pageSize + index + 1}. {scheme.name}</h2>
                     <p className="scan-card-desc">{scheme.description}</p>
                     {eligibility.reasons.map((reason) => <p className="scan-card-reason" key={reason}>{reason}</p>)}
                     <div className="scan-card-details discover-scheme-details">
@@ -176,7 +183,15 @@ export function DiscoverPage() {
                   </article>
                 )
               })}
-            </div>
+              </div>
+              <Pagination
+                page={pagination.page}
+                pageCount={pagination.pageCount}
+                pageSize={pagination.pageSize}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.setPage}
+              />
+            </>
           )}
           <div className="disclaimer">
             <span>!</span><p>{data.disclaimer} Unknown and unverified schemes are not presented as eligible.</p>

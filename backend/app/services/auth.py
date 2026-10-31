@@ -29,7 +29,10 @@ def _users_collection():
     database_name = os.getenv("DATABASE_NAME", "schemematch")
     collection = client[database_name]["users"]
     # Ensure the email index exists (idempotent on re-runs)
-    collection.create_index("email", unique=True)
+    try:
+        collection.create_index("email", unique=True)
+    except PyMongoError as error:
+        raise SchemeStoreUnavailable("Database error preparing authentication.") from error
     return collection
 
 
@@ -83,7 +86,16 @@ def authenticate_user(email: str, password: str) -> dict:
     except PyMongoError as error:
         raise SchemeStoreUnavailable("Database error during login.") from error
 
-    if doc is None or not verify_password(password, doc["hashed_password"]):
+    stored_hash = doc.get("hashed_password") if doc else None
+    try:
+        password_matches = (
+            isinstance(stored_hash, str)
+            and verify_password(password, stored_hash)
+        )
+    except (ValueError, TypeError):
+        password_matches = False
+
+    if not password_matches:
         raise AuthError("Incorrect email or password.")
 
     return {"id": str(doc["_id"]), "name": doc["name"], "email": doc["email"]}
